@@ -1,38 +1,6 @@
 import * as readline from "node:readline/promises";
 import { stdin, stdout } from "node:process";
-import Anthropic from "@anthropic-ai/sdk";
 import { Chat } from "./llm/chat.js";
-
-// Load the API key from .env. Node can do this by itself, so we need no extra package.
-try {
-  process.loadEnvFile(".env");
-} catch {
-  console.error("No .env file found. Copy .env.example to .env and put your API key in it.");
-  process.exit(1);
-}
-
-const apiKey = process.env.ANTHROPIC_API_KEY;
-if (!apiKey || apiKey === "your-key-here") {
-  console.error("ANTHROPIC_API_KEY is missing in .env. Put your API key there.");
-  process.exit(1);
-}
-
-/** Turn an error into a short message the user can act on. */
-function explainError(error: unknown): string {
-  if (error instanceof Anthropic.AuthenticationError) {
-    return "Error: the API key is not valid. Check ANTHROPIC_API_KEY in .env.";
-  }
-  if (error instanceof Anthropic.RateLimitError) {
-    return "Error: too many requests. Wait a minute and try again.";
-  }
-  if (error instanceof Anthropic.APIConnectionError) {
-    return "Error: cannot reach the server. Check your internet connection.";
-  }
-  if (error instanceof Anthropic.APIError) {
-    return `Error ${error.status}: ${error.message}`;
-  }
-  return `Error: ${String(error)}`;
-}
 
 async function main(): Promise<void> {
   const chat = new Chat();
@@ -57,12 +25,16 @@ async function main(): Promise<void> {
     if (!text) continue;
     if (text.toLowerCase() === "exit") break;
 
+    // On a CPU the answer can take a few seconds, so show that JARVIS is working.
+    console.log("(thinking...)");
+
     try {
       const answer = await chat.send(text);
       console.log(`\nJARVIS: ${answer}\n`);
     } catch (error) {
       // Show the problem but keep the chat running, so one bad call does not end the session.
-      console.error(`\n${explainError(error)}\n`);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`\nError: ${message}\n`);
     }
   }
 
