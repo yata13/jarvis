@@ -1,5 +1,8 @@
 // Ollama runs the AI model on this PC. This is its local address (no internet needed).
-const OLLAMA_URL = "http://localhost:11434/api/chat";
+// We use 127.0.0.1, not "localhost": on Windows, Node can turn "localhost" into the
+// IPv6 address ::1, but Ollama listens only on 127.0.0.1, so the call would fail.
+const OLLAMA_HOST = "http://127.0.0.1:11434";
+const OLLAMA_URL = `${OLLAMA_HOST}/api/chat`;
 
 // The free model. Download it once with:  ollama pull llama3.2:3b
 // Small (about 2 GB), so it runs on a normal CPU without a graphics card.
@@ -51,7 +54,7 @@ async function askOllama(messages: Message[]): Promise<string> {
       body: JSON.stringify({ model: MODEL, messages, stream: false }),
     });
   } catch {
-    throw new Error("Cannot reach Ollama. Is the Ollama app running?");
+    throw new Error(`Cannot reach Ollama at ${OLLAMA_HOST}. Is the Ollama app running?`);
   }
 
   const data = (await response.json()) as { message?: { content?: string }; error?: string };
