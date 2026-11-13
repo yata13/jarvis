@@ -2,32 +2,43 @@
 
 A personal AI assistant for your Windows PC.
 It runs **100% on your PC, for free**. No API key and no internet needed.
-We build it step by step. **Now: Step 1, terminal chat.**
+We build it step by step. **Now: Step 2, JARVIS speaks.**
+
+| Step | What JARVIS gets | Status |
+|---|---|---|
+| 1 | Brain: chat with a free local AI | done |
+| 2 | Mouth: speaks every answer (Windows voice) | done |
+| 3 | Ears: you speak, it understands (Whisper, push-to-talk) | next |
+| 4 | Memory: remembers facts about you | later |
 
 ## How it works
 
 ```
-You type  ->  JARVIS (this code)  ->  Ollama (runs the AI model on your PC)  ->  answer
+You type  ->  Ollama (AI model on your PC)  ->  answer on screen  ->  Windows voice speaks it
 ```
 
 - **Ollama** is a free program that runs AI models on your computer.
 - **Llama 3.2 3B** is the free AI model ("the brain"). It is about 2 GB and works without a graphics card.
+- **Windows voice** is built into Windows. Free, offline, nothing to install.
 
 ## Folders
 
 ```
 jarvis/
-  package.json     packages and the "npm start" command
-  tsconfig.json    TypeScript settings
+  package.json            packages and the "npm start" command
+  tsconfig.json           TypeScript settings
   src/
-    index.ts       starts JARVIS: reads what you type, prints the answer
+    index.ts              starts JARVIS: reads what you type, shows and speaks the answer
     llm/
-      chat.ts      talks to the AI model and keeps the chat history
-    speech/        (Step 2 and 3: voice output and voice input)
-    memory/        (Step 4: saved facts)
+      chat.ts             talks to the AI model and keeps the chat history
+    speech/
+      voice-output.ts     what every voice engine must do (speak, stop)
+      windows-voice.ts    the Windows voice engine
+    memory/               (Step 4: saved facts)
 ```
 
-Each part is its own module. Later we can add new parts (for example, PC control) without changing the others.
+Each part is its own module. To use another voice later, we write one new file in
+`speech/` and change one line in `index.ts`.
 
 ## Setup (one time)
 
@@ -52,20 +63,17 @@ Each part is its own module. Later we can add new parts (for example, PC control
 npm start
 ```
 
-Type a message and press Enter. Type `exit` (or press Ctrl+C) to quit.
+Type a message and press Enter. JARVIS shows the answer and speaks it.
+Type `exit` (or press Ctrl+C) to quit. Ctrl+C also stops the voice at once.
 
 The **first answer is slower** (10 to 30 seconds), because the model loads into memory.
-After that, answers take a few seconds.
 
-## Test Step 1
+## Test Step 2
 
-1. Type `Hello`. JARVIS should answer.
-2. Type `My name is Sam`. Then type `What is my name?`. JARVIS should say "Sam".
-   This shows the history works.
-3. Quit and start again. Ask `What is my name?`. JARVIS should NOT know.
-   History lives only while the program runs. (Saved memory comes in Step 4.)
-4. Close Ollama (right-click its icon, Quit) and send a message.
-   You should see: "Cannot reach Ollama. Is the Ollama app running?"
+1. Turn your speakers on. Type `Hello`. JARVIS should **show and speak** the answer.
+2. Type `Tell me 3 fruits`. The voice should sound natural (no "asterisk" or "hash" read aloud).
+3. Ask a long question, then press **Ctrl+C** while it speaks. The voice should stop at once.
+4. Type `My name is Sam`, then `What is my name?`. It should say "Sam" (Step 1 still works).
 
 ## Change the model
 

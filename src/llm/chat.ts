@@ -9,10 +9,11 @@ const OLLAMA_URL = `${OLLAMA_HOST}/api/chat`;
 const MODEL = "llama3.2:3b";
 
 // Short, simple answers: the user's English is basic, a small model stays on track,
-// and later JARVIS will speak them aloud.
+// and JARVIS speaks every answer aloud (lists and symbols sound bad when spoken).
 const SYSTEM_PROMPT = `You are JARVIS, a personal assistant on the user's Windows PC.
 The user's English is basic. Use simple words and short sentences.
-Keep answers short, unless the user asks for more detail.`;
+Keep answers short, unless the user asks for more detail.
+Your answers are read aloud, so write plain sentences: no lists, no tables, no markdown symbols.`;
 
 type Message = { role: "system" | "user" | "assistant"; content: string };
 
