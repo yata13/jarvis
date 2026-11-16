@@ -6,6 +6,7 @@ import { WindowsVoice } from "./speech/windows-voice.js";
 import { Memory } from "./memory/memory.js";
 import { Routine } from "./routine/routine.js";
 import { respond, buildContext } from "./assistant.js";
+import { VoiceInput } from "./voice/voice-input.js";
 
 /** Short error text for the screen. */
 function errorMessage(error: unknown): string {
@@ -21,6 +22,7 @@ async function main(): Promise<void> {
   const chat = new Chat(() => buildContext(memory, routine));
   // To swap the voice engine later, change only this line.
   const voice: VoiceOutput = new WindowsVoice();
+  const voiceInput = new VoiceInput();
   const rl = readline.createInterface({ input: stdin, output: stdout });
 
   // Ctrl+C or Ctrl+D closes the input. We stop the loop (and the voice) instead of crashing.
@@ -30,10 +32,65 @@ async function main(): Promise<void> {
     voice.stop();
   });
 
-  const known = memory.all().length;
+  /** Send one message to JARVIS, show the answer, and speak it if it is a real answer. */
+  async function handleMessage(text: string): Promise<void> {
+    const isLikelyCommand =
+      /^(remember |forget |memory$|help$|what do you know about me$|routine$|add routine |remove routine |next$|pause|resume|mission$|plan$)/i.test(
+        text,
+      );
+    if (!isLikelyCommand) console.log("(thinking...)");
+
+    let reply;
+    try {
+      reply = await respond(text, memory, routine, chat);
+    } catch (error) {
+      console.error(`\nError: ${errorMessage(error)}\n`);
+      return;
+    }
+
+    console.log(`\nJARVIS: ${reply.text}\n`);
+    if (reply.isCommand) return; // command replies are system text, not spoken
+    try {
+      await voice.speak(cleanForSpeech(reply.text));
+    } catch (error) {
+      console.error(`(Voice error: ${errorMessage(error)})\n`);
+    }
+  }
+
+  /** Record the microphone, turn it into text, and handle it like a typed message. */
+  async function handleTalk(): Promise<void> {
+    const missing = voiceInput.whatIsMissing();
+    if (missing.length > 0) {
+      console.log(`\nVoice is not set up yet. Missing: ${missing.join(", ")}.`);
+      console.log("Run scripts\\setup-voice.cmd once, then try again.\n");
+      return;
+    }
+    try {
+      await voiceInput.start();
+    } catch (error) {
+      console.error(`\nCould not start recording: ${errorMessage(error)}\n`);
+      return;
+    }
+    await rl.question("Recording... speak, then press Enter to stop. ");
+
+    let said: string;
+    try {
+      said = await voiceInput.stopAndTranscribe();
+    } catch (error) {
+      console.error(`\nCould not understand the voice: ${errorMessage(error)}\n`);
+      return;
+    }
+    if (!said) {
+      console.log("\n(I heard nothing. Try again, and speak close to the microphone.)\n");
+      return;
+    }
+    console.log(`\nYou (voice): ${said}\n`);
+    await handleMessage(said);
+  }
+
   console.log(
-    `JARVIS is ready. I remember ${known} thing(s) about you. ` +
-      'Type "help" for commands, or "exit" to quit.\n',
+    `JARVIS is ready. I remember ${memory.all().length} thing(s) about you.\n` +
+      'Type a message, type "talk" to speak, "help" for commands, or "exit" to quit.\n',
   );
 
   while (open) {
@@ -45,35 +102,15 @@ async function main(): Promise<void> {
     }
 
     if (!text) continue;
-    if (text.toLowerCase() === "exit") break;
+    const lower = text.toLowerCase();
+    if (lower === "exit") break;
 
-    // A command answers at once; a real message goes to the AI, which can take a few seconds.
-    const isLikelyCommand =
-      /^(remember |forget |memory$|help$|what do you know about me$|routine$|add routine |remove routine |next$|pause|resume|mission$|plan$)/i.test(
-        text,
-      );
-    if (!isLikelyCommand) console.log("(thinking...)");
-
-    let reply;
-    try {
-      reply = await respond(text, memory, routine, chat);
-    } catch (error) {
-      // Show the problem but keep the chat running, so one bad call does not end the session.
-      console.error(`\nError: ${errorMessage(error)}\n`);
+    if (lower === "talk" || lower === "voice") {
+      await handleTalk();
       continue;
     }
 
-    console.log(`\nJARVIS: ${reply.text}\n`);
-
-    // Speak only real answers, not command replies (those are system text).
-    if (reply.isCommand) continue;
-    // Wait until JARVIS finishes speaking, so it does not talk over the next answer.
-    try {
-      await voice.speak(cleanForSpeech(reply.text));
-    } catch (error) {
-      // A voice problem should not stop the chat: the answer is already on screen.
-      console.error(`(Voice error: ${errorMessage(error)})\n`);
-    }
+    await handleMessage(text);
   }
 
   voice.stop();

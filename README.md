@@ -10,7 +10,7 @@ We build it step by step. **Now: Step 4, JARVIS remembers you.**
 | 2 | Mouth: speaks every answer (Windows voice) | done |
 | 4 | Memory: remembers facts about you | done |
 | — | Phone chat: talk to this PC from your phone | done |
-| 3 | Ears: you speak, it understands (Whisper, push-to-talk) | next |
+| 3 | Ears: you speak, it understands (Whisper, push-to-talk) | done |
 
 ## How it works
 
@@ -40,9 +40,16 @@ jarvis/
     speech/
       voice-output.ts     what every voice engine must do (speak, stop)
       windows-voice.ts    the Windows voice engine
+    voice/                voice input (you speak -> text)
+      recorder.ts         records the microphone with ffmpeg
+      transcriber.ts      turns the sound into text with whisper.cpp
+      voice-input.ts      ties them together; tools.ts finds the programs
     memory/
       memory.ts           saves and loads facts about you (JSON file on your PC)
-  jarvis-data/            your memory file lives here (not on GitHub)
+    routine/              your daily plan and missions
+  scripts/                start-server, install-autostart, setup-voice
+  jarvis-data/            your memory and routine live here (not on GitHub)
+  voice-tools/            the voice programs after setup-voice (not on GitHub)
 ```
 
 Each part is its own module. To use another voice later, we write one new file in
@@ -149,6 +156,33 @@ mission                     get a small self-improvement mission
 
 When paused, JARVIS will not push you about the plan. Type `resume` when you are back.
 The plan is saved in `jarvis-data/routine.json` on your PC. The phone chat uses it too.
+
+## Talk to JARVIS (voice input)
+
+You can speak instead of type. Your voice becomes text with **Whisper**, which
+runs on your PC, so it is free and works offline after setup.
+
+### Set up voice (one time, about 160 MB)
+
+1. Open the `jarvis\scripts` folder.
+2. Double-click **setup-voice.cmd**. It downloads three small tools into a
+   `voice-tools` folder: whisper.cpp, a small Whisper model, and ffmpeg (to record).
+
+### Use it
+
+1. `npm start`
+2. Type `talk` and press Enter.
+3. Speak, then press **Enter** to stop.
+4. JARVIS shows what you said, answers, and speaks the answer.
+
+Notes:
+- A terminal cannot feel a key being held, so for now it is "press to start,
+  Enter to stop". True hold-to-talk needs a small window app (a later step).
+- The small model (`ggml-tiny.en`) is fast and fine for short, simple English.
+  For better accuracy, download `ggml-base.en.bin` (about 142 MB) into
+  `voice-tools\models` and set `JARVIS_WHISPER_MODEL` to it.
+- If the mic is not found, set `JARVIS_MIC` to its exact name (the setup window
+  and `ffmpeg -list_devices true -f dshow -i dummy` show the names).
 
 ## Run the tests
 

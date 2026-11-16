@@ -3,3 +3,6 @@ node_modules/
 
 # Your personal memory stays on your PC, not on GitHub.
 jarvis-data/
+
+# Downloaded voice programs (whisper, ffmpeg, model) stay on your PC.
+voice-tools/
