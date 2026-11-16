@@ -9,6 +9,7 @@ We build it step by step. **Now: Step 4, JARVIS remembers you.**
 | 1 | Brain: chat with a free local AI | done |
 | 2 | Mouth: speaks every answer (Windows voice) | done |
 | 4 | Memory: remembers facts about you | done |
+| — | Phone chat: talk to this PC from your phone | done |
 | 3 | Ears: you speak, it understands (Whisper, push-to-talk) | next |
 
 ## How it works
@@ -100,13 +101,31 @@ more it can help and see your patterns. Your memory stays on your PC only.
 4. Type `exit`, then `npm start` again. Type `what do I like?`. It should **still** know.
    (This is the big difference from before: memory now survives a restart.)
 
+## Chat from your phone
+
+JARVIS can also answer your phone. The AI stays on this PC; the phone just sends
+messages to it over a free private link (**Tailscale**).
+
+1. Install Tailscale on the PC and the phone (same account): https://tailscale.com/download
+2. On the PC, start the server:
+
+   ```
+   npm run serve
+   ```
+
+   It prints a **PC address** (like `100.90.10.5:11435`) and a **Token**. Keep it open.
+3. In the phone app (JARVIS), tap **Chat with JARVIS**, open **Settings**, and type that
+   address and token. Then chat.
+
+The phone uses the same memory as the PC. Full steps are in the phone app's README.
+
 ## Run the tests
 
 ```
 npm test
 ```
 
-This checks the memory and commands (saving, loading, forget).
+This checks the memory, commands, and the phone server (saving, loading, token, auth).
 
 ## Change the model
 
