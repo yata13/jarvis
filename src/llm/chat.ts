@@ -17,17 +17,32 @@ Your answers are read aloud, so write plain sentences: no lists, no tables, no m
 
 type Message = { role: "system" | "user" | "assistant"; content: string };
 
+/** Gives the current memory text. A function, so facts saved mid-chat are used at once. */
+export type MemoryProvider = () => string;
+
 /**
  * One chat session with the local AI model.
  * The model remembers nothing between calls, so we keep the history here
  * and send all of it each time. The history lives only while the program runs.
+ * Long memory (facts about the user) comes from [getMemory] and goes in the system message.
  */
 export class Chat {
-  // The system message goes first, so the model knows who it is on every turn.
-  private history: Message[] = [{ role: "system", content: SYSTEM_PROMPT }];
+  private history: Message[] = [];
+
+  // No memory by default, so the class still works on its own.
+  constructor(private getMemory: MemoryProvider = () => "") {
+    this.history.push({ role: "system", content: SYSTEM_PROMPT });
+  }
 
   /** Send the user's text and return JARVIS's answer as plain text. */
   async send(userText: string): Promise<string> {
+    // Rebuild the system message each turn, so new facts and the base rules are always there.
+    const memory = this.getMemory();
+    this.history[0] = {
+      role: "system",
+      content: memory ? `${SYSTEM_PROMPT}\n\n${memory}` : SYSTEM_PROMPT,
+    };
+
     this.history.push({ role: "user", content: userText });
 
     let answer: string;

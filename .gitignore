@@ -1,2 +1,5 @@
 node_modules/
 .env
+
+# Your personal memory stays on your PC, not on GitHub.
+jarvis-data/

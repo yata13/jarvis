@@ -3,6 +3,8 @@ import { stdin, stdout } from "node:process";
 import { Chat } from "./llm/chat.js";
 import { cleanForSpeech, type VoiceOutput } from "./speech/voice-output.js";
 import { WindowsVoice } from "./speech/windows-voice.js";
+import { Memory } from "./memory/memory.js";
+import { handleCommand } from "./commands.js";
 
 /** Short error text for the screen. */
 function errorMessage(error: unknown): string {
@@ -10,7 +12,10 @@ function errorMessage(error: unknown): string {
 }
 
 async function main(): Promise<void> {
-  const chat = new Chat();
+  // Long memory: facts about the user, loaded from a file at startup.
+  const memory = new Memory();
+  // The chat reads memory every turn, so facts saved during the chat are used right away.
+  const chat = new Chat(() => memory.asPromptText());
   // To swap the voice engine later, change only this line.
   const voice: VoiceOutput = new WindowsVoice();
   const rl = readline.createInterface({ input: stdin, output: stdout });
@@ -22,7 +27,11 @@ async function main(): Promise<void> {
     voice.stop();
   });
 
-  console.log('JARVIS is ready. Type a message and press Enter. Type "exit" to quit.\n');
+  const known = memory.all().length;
+  console.log(
+    `JARVIS is ready. I remember ${known} thing(s) about you. ` +
+      'Type "help" for commands, or "exit" to quit.\n',
+  );
 
   while (open) {
     let text: string;
@@ -34,6 +43,14 @@ async function main(): Promise<void> {
 
     if (!text) continue;
     if (text.toLowerCase() === "exit") break;
+
+    // Special commands (remember, forget, memory, help) are handled here, not by the AI.
+    // These replies are shown but not spoken, since they are system text, not a real answer.
+    const commandReply = handleCommand(text, memory);
+    if (commandReply !== null) {
+      console.log(`\n${commandReply}\n`);
+      continue;
+    }
 
     // On a CPU the answer can take a few seconds, so show that JARVIS is working.
     console.log("(thinking...)");
