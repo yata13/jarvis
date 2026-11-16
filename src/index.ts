@@ -4,7 +4,7 @@ import { Chat } from "./llm/chat.js";
 import { cleanForSpeech, type VoiceOutput } from "./speech/voice-output.js";
 import { WindowsVoice } from "./speech/windows-voice.js";
 import { Memory } from "./memory/memory.js";
-import { handleCommand } from "./commands.js";
+import { respond } from "./assistant.js";
 
 /** Short error text for the screen. */
 function errorMessage(error: unknown): string {
@@ -44,31 +44,26 @@ async function main(): Promise<void> {
     if (!text) continue;
     if (text.toLowerCase() === "exit") break;
 
-    // Special commands (remember, forget, memory, help) are handled here, not by the AI.
-    // These replies are shown but not spoken, since they are system text, not a real answer.
-    const commandReply = handleCommand(text, memory);
-    if (commandReply !== null) {
-      console.log(`\n${commandReply}\n`);
-      continue;
-    }
+    // A command answers at once; a real message goes to the AI, which can take a few seconds.
+    const isLikelyCommand = /^(remember |forget |memory$|help$|what do you know about me$)/i.test(text);
+    if (!isLikelyCommand) console.log("(thinking...)");
 
-    // On a CPU the answer can take a few seconds, so show that JARVIS is working.
-    console.log("(thinking...)");
-
-    let answer: string;
+    let reply;
     try {
-      answer = await chat.send(text);
+      reply = await respond(text, memory, chat);
     } catch (error) {
       // Show the problem but keep the chat running, so one bad call does not end the session.
       console.error(`\nError: ${errorMessage(error)}\n`);
       continue;
     }
 
-    console.log(`\nJARVIS: ${answer}\n`);
+    console.log(`\nJARVIS: ${reply.text}\n`);
 
+    // Speak only real answers, not command replies (those are system text).
+    if (reply.isCommand) continue;
     // Wait until JARVIS finishes speaking, so it does not talk over the next answer.
     try {
-      await voice.speak(cleanForSpeech(answer));
+      await voice.speak(cleanForSpeech(reply.text));
     } catch (error) {
       // A voice problem should not stop the chat: the answer is already on screen.
       console.error(`(Voice error: ${errorMessage(error)})\n`);
