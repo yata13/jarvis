@@ -130,6 +130,26 @@ Now the server starts as a small window each time you log in. (Ollama already
 auto-starts.) To stop this later, double-click **uninstall-autostart.cmd**.
 To start it now without restarting, double-click **start-server.cmd**.
 
+## Daily routine and missions
+
+JARVIS can hold your daily plan, tell you what is next, give you small missions,
+and pause when you are on a trip or in the hospital. It knows the time and your
+plan, so normal chat ("what should I do now?") is aware of them too.
+
+```
+add routine 09:00 code      add something to your day
+add routine 13:00 gym
+routine                     show your plan (with numbers)
+remove routine 2            remove one item
+next                        what is next in your day
+pause   (or: I am on a trip / I am in the hospital)   pause the plan
+resume  (or: I am back)     start the plan again
+mission                     get a small self-improvement mission
+```
+
+When paused, JARVIS will not push you about the plan. Type `resume` when you are back.
+The plan is saved in `jarvis-data/routine.json` on your PC. The phone chat uses it too.
+
 ## Run the tests
 
 ```

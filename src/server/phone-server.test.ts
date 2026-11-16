@@ -6,6 +6,7 @@ import { join } from "node:path";
 import type { AddressInfo } from "node:net";
 import { Memory } from "../memory/memory.js";
 import { Chat } from "../llm/chat.js";
+import { Routine } from "../routine/routine.js";
 import { createPhoneServer } from "./phone-server.js";
 import { tokenMatches } from "./token.js";
 
@@ -32,8 +33,9 @@ before(async () => {
   const memory = new Memory(join(dir, "memory.json"));
   // Chat is created but we only exercise command paths here (no real AI needed),
   // so the AI is never actually called in these tests.
+  const routine = new Routine(join(dir, "routine.json"));
   const chatObj = new Chat(() => memory.asPromptText());
-  server = createPhoneServer(memory, chatObj, TOKEN);
+  server = createPhoneServer(memory, routine, chatObj, TOKEN);
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   const port = (server.address() as AddressInfo).port;
   base = `http://127.0.0.1:${port}`;

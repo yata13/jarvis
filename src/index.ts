@@ -4,7 +4,8 @@ import { Chat } from "./llm/chat.js";
 import { cleanForSpeech, type VoiceOutput } from "./speech/voice-output.js";
 import { WindowsVoice } from "./speech/windows-voice.js";
 import { Memory } from "./memory/memory.js";
-import { respond } from "./assistant.js";
+import { Routine } from "./routine/routine.js";
+import { respond, buildContext } from "./assistant.js";
 
 /** Short error text for the screen. */
 function errorMessage(error: unknown): string {
@@ -14,8 +15,10 @@ function errorMessage(error: unknown): string {
 async function main(): Promise<void> {
   // Long memory: facts about the user, loaded from a file at startup.
   const memory = new Memory();
-  // The chat reads memory every turn, so facts saved during the chat are used right away.
-  const chat = new Chat(() => memory.asPromptText());
+  // The daily routine (plan, missions, pause state).
+  const routine = new Routine();
+  // The chat reads memory + routine every turn, so changes are used right away.
+  const chat = new Chat(() => buildContext(memory, routine));
   // To swap the voice engine later, change only this line.
   const voice: VoiceOutput = new WindowsVoice();
   const rl = readline.createInterface({ input: stdin, output: stdout });
@@ -45,12 +48,15 @@ async function main(): Promise<void> {
     if (text.toLowerCase() === "exit") break;
 
     // A command answers at once; a real message goes to the AI, which can take a few seconds.
-    const isLikelyCommand = /^(remember |forget |memory$|help$|what do you know about me$)/i.test(text);
+    const isLikelyCommand =
+      /^(remember |forget |memory$|help$|what do you know about me$|routine$|add routine |remove routine |next$|pause|resume|mission$|plan$)/i.test(
+        text,
+      );
     if (!isLikelyCommand) console.log("(thinking...)");
 
     let reply;
     try {
-      reply = await respond(text, memory, chat);
+      reply = await respond(text, memory, routine, chat);
     } catch (error) {
       // Show the problem but keep the chat running, so one bad call does not end the session.
       console.error(`\nError: ${errorMessage(error)}\n`);

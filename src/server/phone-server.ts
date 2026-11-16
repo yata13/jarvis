@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { Memory } from "../memory/memory.js";
 import type { Chat } from "../llm/chat.js";
+import type { Routine } from "../routine/routine.js";
 import { respond } from "../assistant.js";
 import { tokenMatches } from "./token.js";
 
@@ -17,9 +18,9 @@ const MAX_BODY_BYTES = 10_000;
  *
  * Returns the server so tests and the startup code can start and stop it.
  */
-export function createPhoneServer(memory: Memory, chat: Chat, token: string) {
+export function createPhoneServer(memory: Memory, routine: Routine, chat: Chat, token: string) {
   return createServer((req, res) => {
-    handle(req, res, memory, chat, token).catch((error) => {
+    handle(req, res, memory, routine, chat, token).catch((error) => {
       sendJson(res, 500, { error: String(error) });
     });
   });
@@ -29,6 +30,7 @@ async function handle(
   req: IncomingMessage,
   res: ServerResponse,
   memory: Memory,
+  routine: Routine,
   chat: Chat,
   token: string,
 ): Promise<void> {
@@ -63,7 +65,7 @@ async function handle(
   }
   if (!message) return sendJson(res, 400, { error: "Message is empty." });
 
-  const reply = await respond(message, memory, chat);
+  const reply = await respond(message, memory, routine, chat);
   return sendJson(res, 200, { reply: reply.text });
 }
 
