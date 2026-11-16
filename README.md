@@ -119,6 +119,17 @@ messages to it over a free private link (**Tailscale**).
 
 The phone uses the same memory as the PC. Full steps are in the phone app's README.
 
+### Start the server by itself when the PC turns on
+
+So you do not have to run `npm run serve` by hand every time:
+
+1. Open the `jarvis\scripts` folder.
+2. Double-click **install-autostart.cmd** (run it once).
+
+Now the server starts as a small window each time you log in. (Ollama already
+auto-starts.) To stop this later, double-click **uninstall-autostart.cmd**.
+To start it now without restarting, double-click **start-server.cmd**.
+
 ## Run the tests
 
 ```
