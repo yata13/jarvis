@@ -15,9 +15,7 @@ const APPS: Record<string, string> = {
   edge: "msedge",
   browser: "chrome",
   notepad: "notepad",
-  calculator: "calc",
-  calculater: "calc",
-  calc: "calc",
+  calc: "calc", // "calculator", "calculate", "calculater" all match via startsWith
   paint: "mspaint",
   explorer: "explorer",
   files: "explorer",
@@ -48,17 +46,33 @@ const FOLDERS: Record<string, string> = {
  * act when the app/folder is one we know, or the user clearly says "file".
  * Pure, so it is easy to test.
  */
+/**
+ * Match a spoken/typed word to a known key, forgiving small spelling changes:
+ * exact, or one starts with the other (4+ letters). So "calculate", "calculator"
+ * and "calculater" all map to "calc". Returns the key, or null.
+ */
+function matchKey(name: string, keys: string[]): string | null {
+  if (keys.includes(name)) return name;
+  for (const k of keys) {
+    if (k.length >= 4 && name.startsWith(k)) return k;
+    if (name.length >= 4 && k.startsWith(name)) return k;
+  }
+  return null;
+}
+
 export function parseControl(text: string): ControlIntent | null {
   const t = text.trim().toLowerCase();
 
   // An "open" word (anywhere in the sentence) followed right away by a name we know.
   // The name must come just after the verb, so "show me your code" does NOT open VS Code,
-  // but "jarvis, open chrome" and "please open the calculator app" do.
+  // but "jarvis, open chrome" and "please open the calculate app" do.
   const open = t.match(/\b(?:open|launch|start|run|show)\s+(?:the\s+|my\s+|a\s+|some\s+)?([a-z]+)\b/);
   if (open) {
     const name = open[1];
-    if (name in FOLDERS && name !== "home") return { action: "openFolder", arg: name };
-    if (name in APPS) return { action: "openApp", arg: name };
+    const folderKey = matchKey(name, Object.keys(FOLDERS).filter((f) => f !== "home"));
+    if (folderKey) return { action: "openFolder", arg: folderKey };
+    const appKey = matchKey(name, Object.keys(APPS));
+    if (appKey) return { action: "openApp", arg: appKey };
   }
 
   // "find/search ... <name> ... file" — the word "file" means they really mean files.

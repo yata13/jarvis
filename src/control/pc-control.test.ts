@@ -8,9 +8,9 @@ import { parseControl, findFiles } from "./pc-control.js";
 test("opens known apps, even with words before the verb", () => {
   assert.deepEqual(parseControl("open chrome"), { action: "openApp", arg: "chrome" });
   assert.deepEqual(parseControl("launch spotify"), { action: "openApp", arg: "spotify" });
-  assert.deepEqual(parseControl("open the calculator app"), { action: "openApp", arg: "calculator" });
+  assert.deepEqual(parseControl("open the calculator app"), { action: "openApp", arg: "calc" });
   // Extra words and a typo before/around the command still work.
-  assert.deepEqual(parseControl("hi jarvis open calculater app"), { action: "openApp", arg: "calculater" });
+  assert.deepEqual(parseControl("hi jarvis open calculater app"), { action: "openApp", arg: "calc" });
   assert.deepEqual(parseControl("jarvis please open chrome"), { action: "openApp", arg: "chrome" });
 });
 
@@ -42,4 +42,10 @@ test("findFiles finds matching names and ignores others", () => {
   assert.equal(hits.length, 2);
   assert.ok(hits.every((h) => h.toLowerCase().includes("cv")));
   rmSync(dir, { recursive: true, force: true });
+});
+
+test("forgives spelling variants of calculator", () => {
+  for (const w of ["calc", "calculate", "calculator", "calculater"]) {
+    assert.deepEqual(parseControl(`open ${w} app`), { action: "openApp", arg: "calc" }, `failed for ${w}`);
+  }
 });
