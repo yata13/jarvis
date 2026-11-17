@@ -2,6 +2,7 @@ import type { Chat } from "./llm/chat.js";
 import type { Memory } from "./memory/memory.js";
 import type { Routine } from "./routine/routine.js";
 import { handleCommand } from "./commands.js";
+import { handleControl } from "./control/pc-control.js";
 
 /** What JARVIS replies with for one input. */
 export interface Reply {
@@ -17,10 +18,17 @@ export interface Reply {
  * so both act the same way and both use the same memory and routine.
  */
 export async function respond(text: string, memory: Memory, routine: Routine, chat: Chat): Promise<Reply> {
+  // 1. Typed commands (remember, routine...).
   const commandReply = handleCommand(text, memory, routine);
   if (commandReply !== null) {
     return { text: commandReply, isCommand: true };
   }
+  // 2. PC control (open an app, find a file...). Only known, safe actions.
+  const controlReply = await handleControl(text);
+  if (controlReply !== null) {
+    return { text: controlReply, isCommand: true };
+  }
+  // 3. Otherwise, ask the AI.
   const answer = await chat.send(text);
   return { text: answer, isCommand: false };
 }

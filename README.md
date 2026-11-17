@@ -184,6 +184,21 @@ Notes:
 - If the mic is not found, set `JARVIS_MIC` to its exact name (the setup window
   and `ffmpeg -list_devices true -f dshow -i dummy` show the names).
 
+## Control your PC (open apps, find files)
+
+Just say it in chat (typed or by voice):
+
+```
+open chrome                 open a known app (chrome, notepad, calculator, spotify, settings...)
+open my downloads folder    open a folder (desktop, documents, downloads, pictures...)
+find my cv file             search your Desktop, Documents and Downloads by name
+```
+
+Only known apps open, and search is read-only, so it is safe. Normal chat is not
+affected ("open the door", "find a restaurant" go to the AI). From the phone chat,
+these run on the PC too. Risky actions (delete, move, send) will come later and will
+ask you first.
+
 ## Run the tests
 
 ```
