@@ -54,6 +54,22 @@ export class Recorder {
 }
 
 /**
+ * Record for a fixed number of seconds, then stop by itself (ffmpeg -t).
+ * Used by the wake word, which listens in short chunks.
+ */
+export function recordFixed(ffmpeg: string, device: string, wavPath: string, seconds: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(
+      ffmpeg,
+      ["-y", "-f", "dshow", "-i", `audio=${device}`, "-ac", "1", "-ar", "16000", "-t", String(seconds), wavPath],
+      { stdio: "ignore", windowsHide: true },
+    );
+    proc.on("error", reject);
+    proc.on("close", () => resolve());
+  });
+}
+
+/**
  * Ask ffmpeg for the microphone name. Windows needs the exact name, and it differs per PC.
  * Returns the first audio input it finds, or null. You can skip this by setting JARVIS_MIC.
  */

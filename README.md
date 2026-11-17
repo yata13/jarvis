@@ -175,8 +175,18 @@ runs on your PC, so it is free and works offline after setup.
 3. Speak, then press **Enter** to stop.
 4. JARVIS shows what you said, answers, and speaks the answer.
 
+### Hands-free: the wake word "JARVIS"
+
+Type `listen` and press Enter. Now just say **"JARVIS ..."** and your command, for
+example "JARVIS, what is the time" or "JARVIS, open chrome". JARVIS answers and keeps
+listening. Say only "JARVIS" and it asks "Yes?" and waits for your command. Press
+Enter to stop listening.
+
+It listens in short chunks (about 4 seconds), so there is a small pause between them.
+This uses some CPU while it listens; stop it when you are done.
+
 Notes:
-- A terminal cannot feel a key being held, so for now it is "press to start,
+- A terminal cannot feel a key being held, so `talk` is "press to start,
   Enter to stop". True hold-to-talk needs a small window app (a later step).
 - The small model (`ggml-tiny.en`) is fast and fine for short, simple English.
   For better accuracy, download `ggml-base.en.bin` (about 142 MB) into

@@ -116,7 +116,8 @@ export function handleCommand(text: string, memory: Memory, routine: Routine): s
       "  next                    what is next in your day",
       "  pause / resume          pause for a trip or hospital, then resume",
       "  mission                 get a small self-improvement mission",
-      "  talk                    speak instead of type (hold a short talk, press Enter to stop)",
+      "  talk                    speak once (press Enter to stop)",
+      "  listen                  wait for the wake word, say 'JARVIS ...' (Enter stops)",
       "  exit                    quit",
     ].join("\n");
   }

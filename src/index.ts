@@ -7,6 +7,7 @@ import { Memory } from "./memory/memory.js";
 import { Routine } from "./routine/routine.js";
 import { respond, buildContext } from "./assistant.js";
 import { VoiceInput } from "./voice/voice-input.js";
+import { WakeListener, extractCommand, CHUNK_SECONDS } from "./voice/wake.js";
 
 /** Short error text for the screen. */
 function errorMessage(error: unknown): string {
@@ -23,6 +24,7 @@ async function main(): Promise<void> {
   // To swap the voice engine later, change only this line.
   const voice: VoiceOutput = new WindowsVoice();
   const voiceInput = new VoiceInput();
+  const wake = new WakeListener();
   const rl = readline.createInterface({ input: stdin, output: stdout });
 
   // Ctrl+C or Ctrl+D closes the input. We stop the loop (and the voice) instead of crashing.
@@ -88,9 +90,54 @@ async function main(): Promise<void> {
     await handleMessage(said);
   }
 
+  /** Keep listening for the wake word "JARVIS". Each command is answered, then it listens again. */
+  async function handleListen(): Promise<void> {
+    const missing = wake.whatIsMissing();
+    if (missing.length > 0) {
+      console.log(`\nVoice is not set up yet. Missing: ${missing.join(", ")}.`);
+      console.log("Run scripts\\setup-voice.cmd once, then try again.\n");
+      return;
+    }
+
+    // Enter stops listening. We set a flag that the loop checks.
+    let listening = true;
+    const stopOnEnter = rl.question('Listening for "JARVIS"... press Enter to stop.\n').then(() => {
+      listening = false;
+    });
+
+    while (listening) {
+      let heard: string;
+      try {
+        heard = await wake.listenChunk(CHUNK_SECONDS);
+      } catch (error) {
+        console.error(`\n(Listening error: ${errorMessage(error)})\n`);
+        break;
+      }
+      if (!listening) break;
+
+      const command = extractCommand(heard);
+      if (command === null) continue; // no wake word in this chunk
+
+      let toAnswer = command;
+      if (!toAnswer) {
+        // Heard only "JARVIS": ask for the command and record one more chunk.
+        console.log("\nYes?");
+        await voice.speak("Yes?").catch(() => {});
+        toAnswer = (await wake.listenChunk(CHUNK_SECONDS)).trim();
+        if (!toAnswer) continue;
+      }
+
+      console.log(`\nYou (voice): ${toAnswer}\n`);
+      await handleMessage(toAnswer);
+      if (listening) console.log('Listening for "JARVIS"... press Enter to stop.');
+    }
+
+    await stopOnEnter;
+  }
+
   console.log(
     `JARVIS is ready. I remember ${memory.all().length} thing(s) about you.\n` +
-      'Type a message, type "talk" to speak, "help" for commands, or "exit" to quit.\n',
+      'Type a message, "talk" to speak once, "listen" for the wake word, "help", or "exit".\n',
   );
 
   while (open) {
@@ -107,6 +154,11 @@ async function main(): Promise<void> {
 
     if (lower === "talk" || lower === "voice") {
       await handleTalk();
+      continue;
+    }
+
+    if (lower === "listen" || lower === "hey jarvis") {
+      await handleListen();
       continue;
     }
 
