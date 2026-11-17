@@ -1,11 +1,12 @@
 import { spawn } from "node:child_process";
-import { readdirSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, existsSync, copyFileSync, unlinkSync, mkdirSync } from "node:fs";
+import { join, basename } from "node:path";
 
 /** What the user wants to do on the PC. */
 export interface ControlIntent {
-  action: "openApp" | "openFolder" | "findFiles";
+  action: "openApp" | "openFolder" | "findFiles" | "copyFile" | "moveFile" | "typeText";
   arg: string;
+  arg2?: string; // the destination folder (copy/move)
 }
 
 // Known apps we allow to open. Only these, so nothing unexpected can be launched.
@@ -75,6 +76,17 @@ export function parseControl(text: string): ControlIntent | null {
     if (appKey) return { action: "openApp", arg: appKey };
   }
 
+  // "copy/move <name> to <folder>"
+  const copyMove = t.match(/\b(copy|move)\s+(.+?)\s+to\s+(?:the\s+|my\s+)?(desktop|documents|downloads|pictures)\b/);
+  if (copyMove) {
+    const name = copyMove[2].replace(/\b(a|my|the|file|called|named)\b/g, "").trim();
+    if (name) return { action: copyMove[1] === "copy" ? "copyFile" : "moveFile", arg: name, arg2: copyMove[3] };
+  }
+
+  // "type <text>" — types on the keyboard into whatever window is focused.
+  const type = text.trim().match(/^type\s+(.+)$/i);
+  if (type) return { action: "typeText", arg: type[1] };
+
   // "find/search ... <name> ... file" — the word "file" means they really mean files.
   if (/\b(find|search)\b/.test(t) && /\bfiles?\b/.test(t)) {
     const between = t.match(/\b(?:find|search)(?:\s+for)?\s+(.+?)\s+files?\b/);
@@ -85,6 +97,56 @@ export function parseControl(text: string): ControlIntent | null {
   }
 
   return null;
+}
+
+/** Full path to a known folder (Desktop, Documents...). */
+function folderPath(name: string): string | null {
+  const home = process.env.USERPROFILE || process.env.HOME || ".";
+  const sub = FOLDERS[name.toLowerCase()];
+  if (!sub || sub === ".") return null;
+  return join(home, sub);
+}
+
+/** Copy or move a file (found by name) into a folder. Returns a short reply. */
+export function copyOrMoveFile(move: boolean, name: string, folder: string): string {
+  const dest = folderPath(folder);
+  if (!dest) return `I do not know the "${folder}" folder. Try desktop, documents or downloads.`;
+  const matches = findFiles(name);
+  if (matches.length === 0) return `I could not find a file called "${name}".`;
+  const src = matches[0];
+  const target = join(dest, basename(src));
+  try {
+    mkdirSync(dest, { recursive: true });
+    copyFileSync(src, target);
+    if (move) unlinkSync(src); // copy then delete, so it also works across drives
+  } catch (e) {
+    return `Sorry, I could not ${move ? "move" : "copy"} it: ${String(e)}`;
+  }
+  return `${move ? "Moved" : "Copied"} ${basename(src)} to your ${folder} folder.`;
+}
+
+/** Type text on the keyboard (into the focused window) using Windows SendKeys. */
+export function typeText(text: string): string {
+  // SendKeys treats + ^ % ~ ( ) { } [ ] as special, so wrap each in braces.
+  const safe = text.replace(/[+^%~(){}\[\]]/g, "{$&}");
+  const script = [
+    "Add-Type -AssemblyName System.Windows.Forms",
+    "[System.Windows.Forms.SendKeys]::SendWait($env:JARVIS_TYPE)",
+  ].join("; ");
+  const p = spawn("powershell.exe", ["-NoProfile", "-Command", script], {
+    env: { ...process.env, JARVIS_TYPE: safe },
+    windowsHide: true,
+  });
+  p.on("error", () => {});
+  return `Typing: ${text}`;
+}
+
+/** Open a known app by name (used by the agent tools too). */
+export function openApp(name: string): string {
+  const key = matchKey(name.trim().toLowerCase(), Object.keys(APPS));
+  if (!key) return `I can only open apps I know (chrome, notepad, calculator, spotify...). I do not know "${name}".`;
+  openWith(APPS[key]);
+  return `Opening ${key}.`;
 }
 
 /** The folders we look in when finding files. */
@@ -146,6 +208,10 @@ export async function runControl(intent: ControlIntent): Promise<string> {
     p.unref();
     return `Opening your ${intent.arg} folder.`;
   }
+
+  if (intent.action === "copyFile") return copyOrMoveFile(false, intent.arg, intent.arg2 ?? "desktop");
+  if (intent.action === "moveFile") return copyOrMoveFile(true, intent.arg, intent.arg2 ?? "desktop");
+  if (intent.action === "typeText") return typeText(intent.arg);
 
   // findFiles
   const files = findFiles(intent.arg);

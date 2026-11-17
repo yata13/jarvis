@@ -1,12 +1,14 @@
 // Ollama runs the AI model on this PC. This is its local address (no internet needed).
 // We use 127.0.0.1, not "localhost": on Windows, Node can turn "localhost" into the
 // IPv6 address ::1, but Ollama listens only on 127.0.0.1, so the call would fail.
-const OLLAMA_HOST = "http://127.0.0.1:11434";
+export const OLLAMA_HOST = "http://127.0.0.1:11434";
 const OLLAMA_URL = `${OLLAMA_HOST}/api/chat`;
 
 // The free model. Download it once with:  ollama pull llama3.2:3b
 // Small (about 2 GB), so it runs on a normal CPU without a graphics card.
-const MODEL = "llama3.2:3b";
+// To make JARVIS smarter (better at doing tasks), change this to a bigger model,
+// for example "llama3.1:8b" (slower on a CPU), after: ollama pull llama3.1:8b
+export const MODEL = "llama3.2:3b";
 
 // Short, simple answers: the user's English is basic, a small model stays on track,
 // and JARVIS speaks every answer aloud (lists and symbols sound bad when spoken).

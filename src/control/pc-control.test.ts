@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseControl, findFiles } from "./pc-control.js";
+import { parseControl, findFiles, copyOrMoveFile } from "./pc-control.js";
 
 test("opens known apps, even with words before the verb", () => {
   assert.deepEqual(parseControl("open chrome"), { action: "openApp", arg: "chrome" });
@@ -47,5 +47,30 @@ test("findFiles finds matching names and ignores others", () => {
 test("forgives spelling variants of calculator", () => {
   for (const w of ["calc", "calculate", "calculator", "calculater"]) {
     assert.deepEqual(parseControl(`open ${w} app`), { action: "openApp", arg: "calc" }, `failed for ${w}`);
+  }
+});
+
+test("parses copy/move and type", () => {
+  assert.deepEqual(parseControl("copy yata.jpg to desktop"), { action: "copyFile", arg: "yata.jpg", arg2: "desktop" });
+  assert.deepEqual(parseControl("move my report to documents"), { action: "moveFile", arg: "report", arg2: "documents" });
+  assert.deepEqual(parseControl("type hello world"), { action: "typeText", arg: "hello world" });
+  assert.equal(parseControl("copy that idea to your head"), null); // unknown folder
+});
+
+test("copyOrMoveFile copies a found file into a folder", () => {
+  const dir = mkdtempSync(join(tmpdir(), "jarvis-copy-"));
+  mkdirSync(join(dir, "Desktop"));
+  mkdirSync(join(dir, "Downloads"));
+  writeFileSync(join(dir, "Downloads", "yata.jpg"), "img");
+  const old = process.env.USERPROFILE;
+  process.env.USERPROFILE = dir;
+  try {
+    const msg = copyOrMoveFile(false, "yata", "desktop");
+    assert.match(msg, /Copied/);
+    assert.ok(existsSync(join(dir, "Desktop", "yata.jpg")));
+    assert.ok(existsSync(join(dir, "Downloads", "yata.jpg"))); // copy keeps the original
+  } finally {
+    if (old === undefined) delete process.env.USERPROFILE; else process.env.USERPROFILE = old;
+    rmSync(dir, { recursive: true, force: true });
   }
 });

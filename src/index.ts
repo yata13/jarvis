@@ -1,6 +1,6 @@
 import * as readline from "node:readline/promises";
 import { stdin, stdout } from "node:process";
-import { Chat } from "./llm/chat.js";
+import { Agent } from "./agent/agent.js";
 import { cleanForSpeech, type VoiceOutput } from "./speech/voice-output.js";
 import { WindowsVoice } from "./speech/windows-voice.js";
 import { Memory } from "./memory/memory.js";
@@ -20,7 +20,7 @@ async function main(): Promise<void> {
   // The daily routine (plan, missions, pause state).
   const routine = new Routine();
   // The chat reads memory + routine every turn, so changes are used right away.
-  const chat = new Chat(() => buildContext(memory, routine));
+  const agent = new Agent(() => buildContext(memory, routine));
   // To swap the voice engine later, change only this line.
   const voice: VoiceOutput = new WindowsVoice();
   const voiceInput = new VoiceInput();
@@ -44,7 +44,7 @@ async function main(): Promise<void> {
 
     let reply;
     try {
-      reply = await respond(text, memory, routine, chat);
+      reply = await respond(text, memory, routine, agent);
     } catch (error) {
       console.error(`\nError: ${errorMessage(error)}\n`);
       return;

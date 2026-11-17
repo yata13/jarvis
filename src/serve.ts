@@ -1,7 +1,7 @@
 import { networkInterfaces } from "node:os";
 import { Memory } from "./memory/memory.js";
 import { Routine } from "./routine/routine.js";
-import { Chat } from "./llm/chat.js";
+import { Agent } from "./agent/agent.js";
 import { buildContext } from "./assistant.js";
 import { loadOrCreateToken } from "./server/token.js";
 import { createPhoneServer, PHONE_PORT } from "./server/phone-server.js";
@@ -14,10 +14,10 @@ import { createPhoneServer, PHONE_PORT } from "./server/phone-server.js";
 function main(): void {
   const memory = new Memory();
   const routine = new Routine();
-  const chat = new Chat(() => buildContext(memory, routine));
+  const agent = new Agent(() => buildContext(memory, routine));
   const token = loadOrCreateToken();
 
-  const server = createPhoneServer(memory, routine, chat, token);
+  const server = createPhoneServer(memory, routine, agent, token);
 
   // 0.0.0.0 = listen on every network card, so Tailscale can reach it.
   // The token still keeps strangers out.
