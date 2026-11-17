@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { readdirSync, existsSync, copyFileSync, unlinkSync, mkdirSync } from "node:fs";
+import { readdirSync, copyFileSync, unlinkSync, mkdirSync } from "node:fs";
 import { join, basename } from "node:path";
 
 /** What the user wants to do on the PC. */
@@ -149,26 +149,32 @@ export function openApp(name: string): string {
   return `Opening ${key}.`;
 }
 
-/** The folders we look in when finding files. */
+/** Where to search: the whole user folder (so Pictures, OneDrive, custom folders are covered). */
 function searchRoots(home = process.env.USERPROFILE || process.env.HOME || "."): string[] {
-  const names = ["Desktop", "Documents", "Downloads"];
-  const roots: string[] = [];
-  for (const base of [home, join(home, "OneDrive")]) {
-    for (const n of names) {
-      const p = join(base, n);
-      if (existsSync(p)) roots.push(p);
-    }
-  }
-  return roots.length > 0 ? roots : [home];
+  return [home];
 }
 
-/** Find files whose name contains the query, in the common folders. Read-only and safe. */
-export function findFiles(query: string, roots = searchRoots(), limit = 10): string[] {
+// Big or system folders we skip, so the search stays fast and finds your real files.
+const SKIP_DIRS = new Set([
+  "appdata",
+  "application data",
+  "node_modules",
+  "$recycle.bin",
+  "onedrivetemp",
+  "windows",
+  "program files",
+  "program files (x86)",
+  ".cache",
+  ".git",
+]);
+
+/** Find files whose name contains the query, across your user folder. Read-only and safe. */
+export function findFiles(query: string, roots = searchRoots(), limit = 12): string[] {
   const needle = query.toLowerCase();
   const found: string[] = [];
 
   const walk = (dir: string, depth: number): void => {
-    if (depth > 4 || found.length >= limit) return;
+    if (depth > 6 || found.length >= limit) return;
     let entries;
     try {
       entries = readdirSync(dir, { withFileTypes: true });
@@ -177,10 +183,13 @@ export function findFiles(query: string, roots = searchRoots(), limit = 10): str
     }
     for (const e of entries) {
       if (found.length >= limit) return;
-      if (e.name.startsWith(".")) continue;
-      const full = join(dir, e.name);
-      if (e.isDirectory()) walk(full, depth + 1);
-      else if (e.name.toLowerCase().includes(needle)) found.push(full);
+      const lower = e.name.toLowerCase();
+      if (e.isDirectory()) {
+        if (e.name.startsWith(".") || SKIP_DIRS.has(lower)) continue; // skip hidden and heavy folders
+        walk(join(dir, e.name), depth + 1);
+      } else if (lower.includes(needle)) {
+        found.push(join(dir, e.name));
+      }
     }
   };
 
@@ -215,7 +224,7 @@ export async function runControl(intent: ControlIntent): Promise<string> {
 
   // findFiles
   const files = findFiles(intent.arg);
-  if (files.length === 0) return `I did not find any file with "${intent.arg}" in your Desktop, Documents or Downloads.`;
+  if (files.length === 0) return `I did not find any file with "${intent.arg}" in your user folder (Desktop, Pictures, Downloads...).`;
   return `I found ${files.length} file(s) with "${intent.arg}":\n${files.join("\n")}`;
 }
 
