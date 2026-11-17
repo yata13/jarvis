@@ -5,10 +5,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseControl, findFiles } from "./pc-control.js";
 
-test("opens known apps", () => {
+test("opens known apps, even with words before the verb", () => {
   assert.deepEqual(parseControl("open chrome"), { action: "openApp", arg: "chrome" });
   assert.deepEqual(parseControl("launch spotify"), { action: "openApp", arg: "spotify" });
   assert.deepEqual(parseControl("open the calculator app"), { action: "openApp", arg: "calculator" });
+  // Extra words and a typo before/around the command still work.
+  assert.deepEqual(parseControl("hi jarvis open calculater app"), { action: "openApp", arg: "calculater" });
+  assert.deepEqual(parseControl("jarvis please open chrome"), { action: "openApp", arg: "chrome" });
 });
 
 test("opens known folders", () => {
@@ -18,6 +21,7 @@ test("opens known folders", () => {
 
 test("does NOT hijack normal chat", () => {
   assert.equal(parseControl("open the door please"), null); // unknown app
+  assert.equal(parseControl("show me your code"), null); // name not right after the verb
   assert.equal(parseControl("find a good restaurant"), null); // no "file"
   assert.equal(parseControl("how are you"), null);
 });

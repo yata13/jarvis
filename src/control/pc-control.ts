@@ -9,12 +9,14 @@ export interface ControlIntent {
 }
 
 // Known apps we allow to open. Only these, so nothing unexpected can be launched.
+// A few common misspellings are included so typing is forgiving.
 const APPS: Record<string, string> = {
   chrome: "chrome",
   edge: "msedge",
   browser: "chrome",
   notepad: "notepad",
   calculator: "calc",
+  calculater: "calc",
   calc: "calc",
   paint: "mspaint",
   explorer: "explorer",
@@ -49,19 +51,22 @@ const FOLDERS: Record<string, string> = {
 export function parseControl(text: string): ControlIntent | null {
   const t = text.trim().toLowerCase();
 
-  // "open/launch/start/show <something>" — only for apps and folders we know.
-  const open = t.match(/^(?:open|launch|start|show)\s+(?:the\s+|my\s+)?(.+)$/);
+  // An "open" word (anywhere in the sentence) followed right away by a name we know.
+  // The name must come just after the verb, so "show me your code" does NOT open VS Code,
+  // but "jarvis, open chrome" and "please open the calculator app" do.
+  const open = t.match(/\b(?:open|launch|start|run|show)\s+(?:the\s+|my\s+|a\s+|some\s+)?([a-z]+)\b/);
   if (open) {
-    const target = open[1].replace(/\b(app|application|folder)\b/g, "").trim();
-    if (target in FOLDERS) return { action: "openFolder", arg: target };
-    if (target in APPS) return { action: "openApp", arg: target };
-    return null; // unknown: let the AI answer instead
+    const name = open[1];
+    if (name in FOLDERS && name !== "home") return { action: "openFolder", arg: name };
+    if (name in APPS) return { action: "openApp", arg: name };
   }
 
-  // "find/search [for] <name> file" — the word "file" means they really mean files.
-  const find = t.match(/^(?:find|search)(?:\s+for)?\s+(?:a\s+|my\s+|the\s+)?(.+)$/);
-  if (find && /\bfiles?\b/.test(t)) {
-    const query = find[1].replace(/\b(file|files)\b/g, "").replace(/\b(a|my|the|for)\b/g, "").trim();
+  // "find/search ... <name> ... file" — the word "file" means they really mean files.
+  if (/\b(find|search)\b/.test(t) && /\bfiles?\b/.test(t)) {
+    const between = t.match(/\b(?:find|search)(?:\s+for)?\s+(.+?)\s+files?\b/);
+    const query = (between ? between[1] : "")
+      .replace(/\b(a|my|the|for|called|named)\b/g, "")
+      .trim();
     if (query) return { action: "findFiles", arg: query };
   }
 
