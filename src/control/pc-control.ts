@@ -112,7 +112,9 @@ export function copyOrMoveFile(move: boolean, name: string, folder: string): str
   const dest = folderPath(folder);
   if (!dest) return `I do not know the "${folder}" folder. Try desktop, documents or downloads.`;
   const matches = findFiles(name);
-  if (matches.length === 0) return `I could not find a file called "${name}".`;
+  if (matches.length === 0) {
+    return `I could not find "${name}" in your user folder. Check the exact name, or type "find ${name} file" to see what is there.`;
+  }
   const src = matches[0];
   const target = join(dest, basename(src));
   try {
@@ -168,13 +170,18 @@ const SKIP_DIRS = new Set([
   ".git",
 ]);
 
-/** Find files whose name contains the query, across your user folder. Read-only and safe. */
+/**
+ * Find files whose name contains the query, across your user folder. Read-only and safe.
+ * It matches on the name WITHOUT the extension, so "yata.jpg" also finds "yata.jpeg",
+ * "yata.png" or "yata (1).jpg". If more than one matches, the closest name comes first.
+ */
 export function findFiles(query: string, roots = searchRoots(), limit = 12): string[] {
-  const needle = query.toLowerCase();
+  // Drop a trailing extension from the search, so any extension matches.
+  const needle = query.toLowerCase().replace(/\.[a-z0-9]{1,5}$/, "").trim() || query.toLowerCase();
   const found: string[] = [];
 
   const walk = (dir: string, depth: number): void => {
-    if (depth > 6 || found.length >= limit) return;
+    if (depth > 7 || found.length >= limit) return;
     let entries;
     try {
       entries = readdirSync(dir, { withFileTypes: true });
@@ -194,7 +201,8 @@ export function findFiles(query: string, roots = searchRoots(), limit = 12): str
   };
 
   for (const root of roots) walk(root, 0);
-  return found;
+  // Show the shortest names first (usually the closest match).
+  return found.sort((a, b) => basename(a).length - basename(b).length);
 }
 
 /** Do the action and return a short reply. Only known apps and folders; search is read-only. */
