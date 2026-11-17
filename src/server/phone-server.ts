@@ -3,6 +3,7 @@ import type { Memory } from "../memory/memory.js";
 import type { Chat } from "../llm/chat.js";
 import type { Routine } from "../routine/routine.js";
 import { respond } from "../assistant.js";
+import { pickMission } from "../routine/missions.js";
 import { tokenMatches } from "./token.js";
 
 /** The port the phone connects to. */
@@ -39,15 +40,20 @@ async function handle(
     return sendJson(res, 200, { ok: true, name: "JARVIS" });
   }
 
-  if (req.method !== "POST" || req.url !== "/chat") {
-    return sendJson(res, 404, { error: "Not found. Use POST /chat." });
-  }
-
-  // Check the secret token from the phone.
+  // Everything below needs the secret token from the phone.
   const auth = req.headers.authorization ?? "";
   const given = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : "";
   if (!given || !tokenMatches(given, token)) {
     return sendJson(res, 401, { error: "Wrong or missing token." });
+  }
+
+  // The phone asks for a mission when it locks an app. JARVIS picks it.
+  if (req.method === "GET" && req.url === "/mission") {
+    return sendJson(res, 200, { mission: pickMission() });
+  }
+
+  if (req.method !== "POST" || req.url !== "/chat") {
+    return sendJson(res, 404, { error: "Not found. Use POST /chat or GET /mission." });
   }
 
   let body: string;

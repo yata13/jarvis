@@ -85,3 +85,13 @@ test("empty message is refused", async () => {
   const { status } = await chat("   ");
   assert.equal(status, 400);
 });
+
+test("GET /mission needs the token and returns a mission", async () => {
+  const noAuth = await fetch(`${base}/mission`);
+  assert.equal(noAuth.status, 401);
+  const res = await fetch(`${base}/mission`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(typeof body.mission, "string");
+  assert.ok(body.mission.length > 0);
+});
